@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scenario Planner</title>
+<style>
+  :root{
+    --bg1:#f7f8ff; --bg2:#f4f7fb; --panel:#ffffffcc; --border:#e5e7eb; --text:#0f172a;
+    --muted:#64748b; --violet:#8b5cf6; --violetSoft:#ede9fe; --sky:#38bdf8; --slate:#0f172a;
+    --shadow:0 18px 45px rgba(148,163,184,.14);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at top left, rgba(191,219,254,.25), transparent 30%),linear-gradient(180deg,var(--bg1) 0%, #f8fafc 55%, var(--bg2) 100%);min-height:100vh}
+  .hidden{display:none!important}
+  .app{display:flex;min-height:100vh}
+  .sidebar{width:274px;padding:22px 16px;border-right:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.72);backdrop-filter:blur(14px);box-shadow:8px 0 30px rgba(148,163,184,.08);transition:width .18s ease,padding .18s ease}
+  .sidebar.collapsed{width:84px;padding:22px 10px}
+  .brand{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+  .brand-main{display:flex;gap:12px;align-items:flex-start;min-width:0}
+  .sidebar-collapse-btn{width:28px;height:28px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;color:#64748b;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .sidebar-collapse-btn:hover{background:#f8fafc}
+  .brand-icon{width:44px;height:44px;border-radius:16px;background:linear-gradient(135deg,var(--violet),var(--sky));color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 10px 24px rgba(139,92,246,.28)}
+  .brand-title{font-weight:700;font-size:18px;line-height:1.1;outline:none}
+  .brand-sub{font-size:12px;color:var(--muted);margin-top:4px;outline:none}
+  .nav-btn{width:100%;border:none;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:transparent;color:#475569;font-size:14px;margin-bottom:6px;overflow:hidden}
+  .nav-btn .nav-label{white-space:nowrap}
+  .sidebar.collapsed .nav-btn{justify-content:center;padding:12px 0}
+  .sidebar.collapsed .nav-btn .nav-label{display:none}
+  .nav-btn:hover{background:#f1f5f9}
+  .nav-btn.active{background:linear-gradient(90deg,var(--violet),var(--sky));color:#fff;box-shadow:0 10px 20px rgba(139,92,246,.2)}
+  .section-label{margin:22px 0 10px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#94a3b8}
+  .sidebar.collapsed .section-label,.sidebar.collapsed .brand-copy,.sidebar.collapsed #saved-scenarios-nav{display:none}
+  .scenario-mini{background:rgba(255,255,255,.78);border:1px solid #e2e8f0;border-radius:18px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(15,23,42,.03);cursor:pointer}
+  .scenario-mini:hover{border-color:#c4b5fd;background:#faf5ff}
+  .scenario-mini-title{font-size:14px;font-weight:600;line-height:1.3}
+  .mini-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px}
+  .main{flex:1;padding:28px}
+  .top{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+  h1{margin:0;font-size:34px;line-height:1.05}
+  .sub{margin-top:6px;color:var(--muted);font-size:14px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{border:none;border-radius:16px;padding:12px 16px;cursor:pointer;font-weight:600;font-size:14px}
+  .btn.primary{background:var(--slate);color:white}
+  .btn.primary:hover{background:#1e293b}
+  .btn.outline{background:rgba(255,255,255,.85);color:#334155;border:1px solid var(--border)}
+  .btn.tiny{padding:8px 11px;border-radius:12px;font-size:12px}
+  .badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;border:1px solid #ddd;font-size:10px;font-weight:700;line-height:1}
+  .b-active{background:#f3e8ff;color:#7c3aed;border-color:#ddd6fe}
+  .b-draft{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+  .b-pref{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
+  .b-rec{background:#f3e8ff;color:#7c3aed;border-color:#ddd6fe}
+  .b-back{background:#fef3c7;color:#b45309;border-color:#fde68a}
+  .b-rev{background:#e0f2fe;color:#0369a1;border-color:#bae6fd}
+  .b-high{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+  .b-med{background:#fffbeb;color:#b45309;border-color:#fde68a}
+  .b-low{background:#ecfdf5;color:#15803d;border-color:#bbf7d0}
+  .card{background:var(--panel);border:1px solid rgba(255,255,255,.75);box-shadow:var(--shadow);border-radius:28px;backdrop-filter:blur(10px)}
+  .pad{padding:20px}
+  .card-title{font-size:18px;font-weight:700}
+  .card-sub{font-size:14px;color:var(--muted);margin-top:4px}
+  .grid-home{display:grid;gap:16px;grid-template-columns:1.35fr 1fr}
+  .q-item{border:1px solid #e2e8f0;background:rgba(248,250,252,.8);border-radius:18px;padding:14px;margin-top:12px}
+  .q-inner{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .q-text{outline:none}
+  .icon-btn{width:20px;height:20px;font-size:11px;padding:0;border-radius:6px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;color:#64748b}
+  .controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .toggle-line{font-size:13px;color:#475569;display:flex;align-items:center;gap:8px}
+  .autosave-note{font-size:12px;color:#64748b}
+  .canvas{overflow-x:hidden;overflow-y:hidden}
+  .canvas-inner{display:grid;grid-template-columns:repeat(var(--step-count,1),minmax(0,1fr));gap:12px;padding:14px;min-height:560px;align-items:start;width:100%}
+  .step{--step-bg:linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%);--step-border:#dbe4ee;--step-accent:#cbd5e1;--step-title-color:#334155;--step-desc-color:#64748b;--card-bg:linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.72) 100%);--card-border:rgba(255,255,255,.8);--card-selected-bg:linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.82) 100%);--card-selected-border:#ffffff;--checkbox-bg:rgba(255,255,255,.78);width:auto;min-width:0;max-width:100%;flex:none;border:1px solid var(--step-border);background:var(--step-bg);border-radius:22px;padding:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 8px 18px rgba(148,163,184,.08)}
+  .step-head{display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:10px}
+  .step-delete-btn{width:25px;height:25px;border-radius:8px;font-size:12px;flex:0 0 auto;border-color:rgba(255,255,255,.72);background:rgba(255,255,255,.7)}
+  .step-kicker{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(71,85,105,.72)}
+  .step-title{font-size:18px;font-weight:700;margin-top:4px;line-height:1.15;color:var(--step-title-color)}
+  .step-desc{font-size:11px;color:var(--step-desc-color);margin-top:4px;line-height:1.35}
+  .option-card{border:1px solid var(--card-border);background:var(--card-bg);backdrop-filter:blur(8px);border-radius:18px;padding:11px;margin-bottom:10px;box-shadow:0 4px 14px rgba(15,23,42,.05);transition:.18s ease;cursor:pointer;min-width:0}
+  .option-card:hover{transform:translateY(-2px);border-color:var(--step-accent);box-shadow:0 8px 18px rgba(15,23,42,.08)}
+  .option-card.selected{border-color:var(--card-selected-border);background:var(--card-selected-bg);box-shadow:0 10px 22px rgba(255,255,255,.24),0 10px 22px rgba(15,23,42,.08)}
+  .option-head{display:flex;justify-content:space-between;gap:10px;align-items:start}
+  .option-title{font-weight:700;font-size:13px;line-height:1.25;color:#1e293b}
+  .option-sub{font-size:11px;color:#475569;margin-top:5px;line-height:1.35}
+  .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .mini{border-radius:10px;border:1px solid rgba(255,255,255,.75);padding:4px 6px;font-size:10px;font-weight:600;background:rgba(255,255,255,.52)}
+  .card-actions{display:flex;justify-content:flex-end;align-items:center;margin-top:10px;gap:8px}
+  .checkbox-toggle{width:18px;height:18px;border-radius:5px;border:1px solid var(--step-accent);background:var(--checkbox-bg);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;color:#fff;font-size:12px;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+  .checkbox-toggle.checked{background:linear-gradient(180deg,rgba(255,255,255,.95) 0%, color-mix(in srgb, var(--step-accent) 46%, white 54%) 100%);border-color:color-mix(in srgb, var(--step-accent) 88%, white 12%);color:#334155}
+  .checkbox-toggle .checkmark{line-height:1;transform:translateY(-.5px)}
+  .compare-grid{display:grid;gap:16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .section-box{border:1px solid #e2e8f0;background:rgba(248,250,252,.8);border-radius:18px;padding:14px;margin-top:12px}
+  .section-k{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px}
+  .section-v{font-size:14px;color:#475569;line-height:1.6}
+  .compare-pros-title{color:#15803d!important;font-weight:700!important}
+  .compare-cons-title{color:#b91c1c!important;font-weight:700!important}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:40}
+  .modal.show{display:flex}
+  .modal-card{width:min(760px,100%);max-height:600px;display:flex;flex-direction:column;min-height:0;background:#fff;border-radius:28px;box-shadow:0 24px 80px rgba(15,23,42,.28);padding:20px;overflow:hidden}
+  .field{margin-bottom:14px}
+  .label{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px}
+  .input,.textarea,.select{width:100%;border:1px solid var(--border);border-radius:16px;background:white;padding:12px 14px;font:inherit;color:#334155}
+  .textarea{min-height:84px;resize:vertical}
+  .grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  @media (max-width: 1400px){
+    .main{padding:22px}
+    .canvas-inner{gap:10px;padding:12px}
+    .step{padding:10px;border-radius:20px}
+    .step-title{font-size:17px}
+    .option-title{font-size:12px}
+    .option-sub{font-size:10px}
+    .mini{font-size:9px;padding:4px 5px}
+  }
+  @media (max-width: 1200px){.grid-home,.compare-grid,.grid-2{grid-template-columns:1fr}.canvas-inner{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+  @media (max-width: 840px){.app{display:block}.sidebar,.sidebar.collapsed{width:auto;border-right:none;border-bottom:1px solid rgba(255,255,255,.7);padding:16px}.sidebar.collapsed .brand-copy,.sidebar.collapsed #saved-scenarios-nav,.sidebar.collapsed .section-label{display:block}.sidebar.collapsed .nav-btn{justify-content:flex-start;padding:12px 14px}.sidebar.collapsed .nav-btn .nav-label{display:inline}.main{padding:18px}.canvas{overflow-x:auto}.canvas-inner{display:flex;flex-wrap:nowrap;width:max-content;min-width:100%}.step{width:260px;min-width:260px}}
+
+  .modal-card::-webkit-scrollbar{width:10px}
+  .modal-card::-webkit-scrollbar-thumb{background:#d8dee8;border-radius:999px}
+  .modal-card::-webkit-scrollbar-track{background:transparent}
+  .modal .top{flex:0 0 auto;background:#fff;padding-bottom:8px;z-index:2}
+  .modal-actions{flex:0 0 auto;background:#fff;padding-top:10px;border-top:1px solid #eef2f7;margin-top:6px}
+  .label-hint{font-size:11px;color:#94a3b8;margin-top:4px}
+  .step-title-text{outline:none;border-radius:8px;padding:2px 4px}
+  .step-title-text:focus{background:#f5f3ff;box-shadow:0 0 0 2px #ddd6fe}
+
+  .modal-body{flex:1 1 auto;min-height:0;overflow:auto;padding-right:4px}
+  .modal-body::-webkit-scrollbar{width:10px}
+  .modal-body::-webkit-scrollbar-thumb{background:#d8dee8;border-radius:999px}
+  .modal-body::-webkit-scrollbar-track{background:transparent}
+  .saved-scenario-selected{border-color:#8b5cf6!important;background:linear-gradient(180deg,#faf5ff 0%,#f5f3ff 100%)!important;box-shadow:0 10px 22px rgba(139,92,246,.12)!important}
+  .settings-grid{display:grid;gap:16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .settings-list{margin-top:12px}
+  .settings-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e8f0;background:rgba(248,250,252,.8);border-radius:16px;margin-top:10px}
+  .settings-row-text{font-size:14px;font-weight:600;color:#334155;min-width:0;word-break:break-word}
+  .settings-empty{font-size:13px;color:#94a3b8;border:1px dashed #dbe4ee;border-radius:16px;padding:14px;margin-top:10px;background:#fafcff}
+  @media (max-width: 1200px){.settings-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="app-sidebar">
+    <div class="brand">
+      <div class="brand-main">
+        <div class="brand-icon">∿</div>
+        <div class="brand-copy">
+          <div class="brand-title" id="brand-title" contenteditable="false">Scenario Planner</div>
+          <div class="brand-sub" id="brand-sub" contenteditable="false">Local option planning prototype</div>
+        </div>
+      </div>
+      <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" type="button" title="Collapse navigation">◀</button>
+    </div>
+
+    <button class="nav-btn active" data-view="home"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+    <button class="nav-btn" data-view="options"><span class="nav-icon">🪄</span><span class="nav-label">Options</span></button>
+    <button class="nav-btn" data-view="scenario-viewer"><span class="nav-icon">📘</span><span class="nav-label">Scenario Viewer</span></button>
+    <button class="nav-btn" data-view="compare"><span class="nav-icon">↔️</span><span class="nav-label">Compare</span></button>
+    <button class="nav-btn" data-view="settings"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
+
+    <div class="section-label">My Scenarios</div>
+    <div id="saved-scenarios-nav"></div>
+  </aside>
+
+  <main class="main">
+    <section class="view" id="view-home">
+      <div class="top">
+        <div>
+          <h1>Home</h1>
+          <div class="sub">Keep track of the questions you want to work through before saving option sets.</div>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="home-open-options">Open Options</button>
+          <button class="btn outline" id="add-question-btn">+ Add Question</button>
+        </div>
+      </div>
+
+      <div class="grid-home">
+        <div class="card"><div class="pad">
+          <div class="card-title">Priority Questions</div>
+          <div class="card-sub">Edit, add, or remove the questions you want to work through.</div>
+          <div id="question-list"></div>
+        </div></div>
+
+        <div class="card"><div class="pad">
+          <div class="card-title">Saved Scenarios</div>
+          <div class="card-sub">Scenarios you save from selected options appear here and in Compare.</div>
+          <div id="saved-scenarios-home"></div>
+        </div></div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-options">
+      <div class="top">
+        <div>
+          <h1>Options</h1>
+          <div class="sub">Select or deselect options by step, then save the combination you want to compare later.</div>
+        </div>
+        <div class="actions">
+          <button class="btn outline" id="add-step-btn">+ Step</button>
+          <button class="btn outline" id="export-json-btn">Export JSON</button>
+          <button class="btn outline" id="import-json-btn">Import JSON</button>
+          <button class="btn primary" id="save-scenario-btn">Save Scenario</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <label class="toggle-line"><input type="checkbox" id="toggle-show-deselected" checked /> Show deselected options</label>
+        <label class="toggle-line"><input type="checkbox" id="toggle-show-meta" checked /> Show tags / metadata</label>
+        <div class="autosave-note" id="autosave-note">Changes autosave locally in this browser. Save Scenario creates a saved scenario snapshot.</div>
+        <input type="file" id="import-json-file" class="hidden" accept=".json,application/json" />
+      </div>
+
+      <div class="card canvas">
+        <div class="canvas-inner" id="options-grid"></div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-scenario-viewer">
+      <div class="top">
+        <div>
+          <h1 id="scenario-viewer-title">Scenario Viewer</h1>
+          <div class="sub" id="scenario-viewer-sub">Open a saved scenario from the sidebar, then view and update it using the same layout and features as Options.</div>
+        </div>
+        <div class="actions">
+          <button class="btn outline" id="viewer-add-step-btn">+ Step</button>
+          <button class="btn outline" id="viewer-export-json-btn">Export JSON</button>
+          <button class="btn outline" id="viewer-import-json-btn">Import JSON</button>
+          <button class="btn outline" id="viewer-save-scenario-btn" type="button">Autosaved</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="toggle-line" style="gap:10px"><span>Scenario</span><select id="viewer-scenario-select" class="select" style="width:260px;padding:8px 12px;border-radius:12px"></select></div>
+        <label class="toggle-line"><input type="checkbox" id="viewer-toggle-show-deselected" checked /> Show deselected options</label>
+        <label class="toggle-line"><input type="checkbox" id="viewer-toggle-show-meta" checked /> Show tags / metadata</label>
+        <div class="autosave-note" id="viewer-autosave-note">Changes to this scenario autosave locally in this browser.</div>
+        <input type="file" id="viewer-import-json-file" class="hidden" accept=".json,application/json" />
+      </div>
+
+      <div class="card canvas">
+        <div class="canvas-inner" id="viewer-grid"></div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-compare">
+      <div class="top">
+        <div>
+          <h1>Compare</h1>
+          <div class="sub">Choose two saved scenarios to compare side by side.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px"><div class="pad">
+        <div class="grid-2">
+          <div>
+            <div class="label">Scenario A</div>
+            <select id="compare-a" class="select"></select>
+          </div>
+          <div>
+            <div class="label">Scenario B</div>
+            <select id="compare-b" class="select"></select>
+          </div>
+        </div>
+      </div></div>
+
+      <div class="compare-grid" id="compare-grid"></div>
+    </section>
+
+    <section class="view hidden" id="view-settings">
+      <div class="top">
+        <div>
+          <h1>Settings</h1>
+          <div class="sub">Manage the dropdown values used in option cards. Changes update the editor immediately.</div>
+        </div>
+      </div>
+
+      <div class="settings-grid" id="settings-grid"></div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="option-modal">
+  <div class="modal-card">
+    <div class="top" style="margin-bottom:10px">
+      <div>
+        <div class="card-title" id="modal-title">Edit Option</div>
+        <div class="card-sub">Click Save to update this option.</div>
+      </div>
+      <div class="actions">
+        <button class="btn outline" id="close-modal">Close</button>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div class="field">
+        <div class="label">Title</div>
+        <input class="input" id="modal-input-title" />
+      </div>
+
+      <div class="field">
+        <div class="label">Short Description</div><div class="label-hint">Keep this concise. It is shown directly on the option card.</div>
+        <textarea class="textarea" id="modal-input-short"></textarea>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <div class="label">Recommendation</div>
+          <select class="select" id="modal-input-status">
+          </select>
+        </div>
+        <div class="field">
+          <div class="label">Impact</div>
+          <select class="select" id="modal-input-impact">
+          </select>
+        </div>
+        <div class="field">
+          <div class="label">Effort</div>
+          <select class="select" id="modal-input-effort">
+          </select>
+        </div>
+        <div class="field">
+          <div class="label">Complexity</div>
+          <select class="select" id="modal-input-complexity">
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label">Pros</div><div class="label-hint">These show in Compare.</div>
+        <textarea class="textarea" id="modal-input-pros"></textarea>
+      </div>
+      <div class="field">
+        <div class="label">Cons</div><div class="label-hint">These show in Compare.</div>
+        <textarea class="textarea" id="modal-input-cons"></textarea>
+      </div>
+      <div class="field">
+        <div class="label">Notes</div>
+        <textarea class="textarea" id="modal-input-notes"></textarea>
+      </div>
+    </div>
+    <div class="actions modal-actions">
+      <button class="btn outline" id="delete-card-btn">Delete Card</button>
+      <button class="btn outline" id="close-modal-2">Close</button>
+      <button class="btn primary" id="save-modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'scenario_planner_fresh_v1';
+
+function defaultState(){
+  return {
+    toolName:'Scenario Planner',
+    toolDesc:'Local option planning prototype',
+    questions:[
+      'Should reopening move earlier or shift to a shorter window?',
+      'Can PY items be fulfilled only as exceptions through Customer Care?',
+      'Is current-year-only inventory the cleanest donor message?'
+    ],
+    steps:[
+      { id:'step1', name:'Store Model', description:'Top-level model for how the store continues after contract end.', options:[
+        {id:'c1', title:'Limited Reopening Window', short:'Open for a shorter seasonal period with tighter inventory controls.', impact:'Medium', effort:'Medium', complexity:'Medium', status:'Recommended', pros:'Balances donor value with tighter operational control.', cons:'Timing communication has to be very clear.', notes:'Good middle-ground if a full extension is not viable.', selected:true},
+        {id:'c2', title:'Gift Card Fallback', short:'No physical store reopening; use digital reward fallback approach.', impact:'High', effort:'Low', complexity:'Low', status:'Backup', pros:'Operationally cleaner and faster to maintain.', cons:'Less branded merchandise excitement for donors.', notes:'Operationally clean but weaker brand experience.', selected:false}
+      ]},
+      { id:'step2', name:'Fulfillment Method', description:'Operational model for how items are shipped or fulfilled.', options:[
+        {id:'c3', title:'Customer Care Ships PY Exceptions', short:'Customer Care handles approved PY inventory exceptions after closure.', impact:'Medium', effort:'High', complexity:'Medium', status:'Review', pros:'Can preserve some donor goodwill for exceptions.', cons:'Creates manual burden and service inconsistency.', notes:'Could work as an exception-only model, not broad-scale.', selected:false},
+        {id:'c4', title:'Vendor Extension', short:'Seek a short-term extension to maintain continuity while transition options are finalized.', impact:'High', effort:'Medium', complexity:'Low', status:'Preferred', pros:'Strongest continuity option for donors and operations.', cons:'Depends on vendor willingness, pricing, and timeline.', notes:'Strong continuity option if feasible to negotiate.', selected:true}
+      ]},
+      { id:'step3', name:'Inventory Rules', description:'Rules for item assortment and eligibility post-contract.', options:[
+        {id:'c5', title:'Current-Year Items Only', short:'Only offer current year inventory to simplify assortment and donor expectations.', impact:'Medium', effort:'Low', complexity:'Low', status:'Recommended', pros:'Cleanest message and simplest rule set.', cons:'May feel limiting if assortment is narrow.', notes:'Simpler message and cleaner operational logic.', selected:true},
+        {id:'c6', title:'Surplus Inventory Only', short:'Offer only leftover/surplus physical items while inventory lasts.', impact:'Low', effort:'Medium', complexity:'Medium', status:'Review', pros:'Useful for a short limited-run approach.', cons:'Can feel inconsistent if stock visibility is poor.', notes:'Useful as a limited-run strategy.', selected:false}
+      ]}
+    ],
+    savedScenarios:[
+      {id:'s1', title:'Balanced Continuity Option', tone:'Active', selections:{step1:['c1'], step2:['c4'], step3:['c5']}},
+      {id:'s2', title:'Low Complexity Backup', tone:'Draft', selections:{step1:['c2'], step2:['c3'], step3:['c6']}}
+    ],
+    dropdownOptions:{
+      status:['Preferred','Recommended','Backup','Review'],
+      impact:['High','Medium','Low'],
+      effort:['High','Medium','Low'],
+      complexity:['High','Medium','Low']
+    },
+    showDeselected:true,
+    showMeta:true,
+    viewerShowDeselected:true,
+    viewerShowMeta:true,
+    compareA:'s1',
+    compareB:'s2',
+    currentView:'home',
+    currentViewerScenarioId:'',
+    editingOptionId:'',
+    editingContext:'options',
+    viewerSteps:null,
+    viewerScenarioSnapshotId:'',
+    sidebarCollapsed:false
+  };
+}
+
+const state = defaultState();
+loadState();
+normalizeState();
+
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      Object.assign(state, parsed);
+    }
+  }catch(e){}
+}
+
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function toneClass(status){return {Preferred:'b-pref', Recommended:'b-rec', Backup:'b-back', Review:'b-rev', Active:'b-active', Draft:'b-draft'}[status] || 'b-draft';}
+function impactClass(v){return v==='High'?'b-high':v==='Medium'?'b-med':'b-low';}
+function cloneDeep(v){ return JSON.parse(JSON.stringify(v)); }
+
+function getStepPalette(stepIndex){
+  const palettes = [
+    { stepBg:'linear-gradient(180deg,#fdf2f8 0%,#fce7f3 100%)', stepBorder:'#f5c2d8', stepAccent:'#e8a8c5', stepTitle:'#8a3d67', stepDesc:'#9c5c7b', cardBg:'linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(255,247,252,.84) 100%)', cardSelectedBg:'linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(255,238,247,.92) 100%)', checkboxBg:'rgba(255,245,250,.92)' },
+    { stepBg:'linear-gradient(180deg,#eff6ff 0%,#dbeafe 100%)', stepBorder:'#bfdbfe', stepAccent:'#93c5fd', stepTitle:'#24518a', stepDesc:'#4a6b96', cardBg:'linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(240,248,255,.86) 100%)', cardSelectedBg:'linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(229,241,255,.92) 100%)', checkboxBg:'rgba(241,248,255,.94)' },
+    { stepBg:'linear-gradient(180deg,#f0fdf4 0%,#dcfce7 100%)', stepBorder:'#bbf7d0', stepAccent:'#86efac', stepTitle:'#2d6a4f', stepDesc:'#4a7c62', cardBg:'linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(243,255,247,.86) 100%)', cardSelectedBg:'linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(232,252,239,.92) 100%)', checkboxBg:'rgba(245,255,248,.94)' },
+    { stepBg:'linear-gradient(180deg,#fffbeb 0%,#fef3c7 100%)', stepBorder:'#fde68a', stepAccent:'#facc15', stepTitle:'#8a5a12', stepDesc:'#9a6b1f', cardBg:'linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(255,251,240,.86) 100%)', cardSelectedBg:'linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(255,246,222,.92) 100%)', checkboxBg:'rgba(255,251,239,.94)' },
+    { stepBg:'linear-gradient(180deg,#f5f3ff 0%,#ede9fe 100%)', stepBorder:'#ddd6fe', stepAccent:'#c4b5fd', stepTitle:'#5b4ba7', stepDesc:'#7466ae', cardBg:'linear-gradient(180deg,rgba(255,255,255,.92) 0%,rgba(247,245,255,.86) 100%)', cardSelectedBg:'linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(241,237,255,.92) 100%)', checkboxBg:'rgba(248,246,255,.94)' }
+  ];
+  return palettes[stepIndex % palettes.length];
+}
+
+function autosaveContext(context){
+  if(context==='viewer'){
+    const sc = getScenarioById(state.currentViewerScenarioId);
+    if(sc && Array.isArray(state.viewerSteps)){
+      sc.steps = cloneDeep(state.viewerSteps);
+      sc.selections = selectionsFromSteps(sc.steps);
+    }
+  }
+  saveState();
+}
+
+function populateManagedSelect(selectId, values, currentValue){
+  const select = document.getElementById(selectId);
+  if(!select) return;
+  const safeValues = Array.isArray(values) ? values : [];
+  const current = String(currentValue || '');
+  const finalValues = safeValues.slice();
+  if(current && !finalValues.includes(current)) finalValues.push(current);
+  select.innerHTML = '';
+  const blankOpt = document.createElement('option');
+  blankOpt.value = '';
+  blankOpt.textContent = '';
+  select.appendChild(blankOpt);
+  finalValues.forEach(val=>{
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = val;
+    select.appendChild(opt);
+  });
+  select.value = current;
+}
+
+function populateManagedDropdowns(values){
+  const current = values || {};
+  populateManagedSelect('modal-input-status', state.dropdownOptions.status, current.status || '');
+  populateManagedSelect('modal-input-impact', state.dropdownOptions.impact, current.impact || '');
+  populateManagedSelect('modal-input-effort', state.dropdownOptions.effort, current.effort || '');
+  populateManagedSelect('modal-input-complexity', state.dropdownOptions.complexity, current.complexity || '');
+}
+
+function baseStepsWithSelections(selections){
+  const steps = cloneDeep(state.steps || []);
+  const sel = selections || {};
+  steps.forEach(step=>{
+    const ids = new Set(sel[step.id] || []);
+    step.options.forEach(opt=> opt.selected = ids.has(opt.id));
+  });
+  return steps;
+}
+
+function ensureScenarioSnapshot(sc){
+  if(!sc) return;
+  if(!Array.isArray(sc.steps)){
+    sc.steps = baseStepsWithSelections(sc.selections || {});
+  }
+  if(!sc.selections || typeof sc.selections !== 'object'){
+    sc.selections = selectionsFromSteps(sc.steps);
+  }
+}
+
+function normalizeState(){
+  if(!Array.isArray(state.savedScenarios)) state.savedScenarios = [];
+  state.savedScenarios.forEach(ensureScenarioSnapshot);
+  if(!Array.isArray(state.steps)) state.steps = defaultState().steps;
+  if(!Array.isArray(state.questions)) state.questions = defaultState().questions;
+  if(typeof state.showDeselected !== 'boolean') state.showDeselected = true;
+  if(typeof state.showMeta !== 'boolean') state.showMeta = true;
+  if(typeof state.viewerShowDeselected !== 'boolean') state.viewerShowDeselected = true;
+  if(typeof state.viewerShowMeta !== 'boolean') state.viewerShowMeta = true;
+  if(!state.currentView) state.currentView = 'home';
+  if(!('viewerSteps' in state)) state.viewerSteps = null;
+  if(!('viewerScenarioSnapshotId' in state)) state.viewerScenarioSnapshotId = '';
+  if(typeof state.optionsDirty !== 'boolean') state.optionsDirty = false;
+  if(typeof state.viewerDirty !== 'boolean') state.viewerDirty = false;
+  if(typeof state.lastActionAt !== 'number') state.lastActionAt = 0;
+  if(typeof state.sidebarCollapsed !== 'boolean') state.sidebarCollapsed = false;
+  const defaultDropdowns = defaultState().dropdownOptions;
+  if(!state.dropdownOptions || typeof state.dropdownOptions !== 'object') state.dropdownOptions = cloneDeep(defaultDropdowns);
+  Object.keys(defaultDropdowns).forEach(key=>{
+    const vals = Array.isArray(state.dropdownOptions[key]) ? state.dropdownOptions[key] : defaultDropdowns[key];
+    state.dropdownOptions[key] = Array.from(new Set(vals.map(v=>String(v||'').trim()).filter(Boolean)));
+    if(!state.dropdownOptions[key].length) state.dropdownOptions[key] = cloneDeep(defaultDropdowns[key]);
+  });
+}
+
+function applySidebarCollapsed(){
+  const sidebar = document.getElementById('app-sidebar');
+  const btn = document.getElementById('sidebar-collapse-btn');
+  if(!sidebar || !btn) return;
+  sidebar.classList.toggle('collapsed', !!state.sidebarCollapsed);
+  btn.textContent = state.sidebarCollapsed ? '▶' : '◀';
+  btn.title = state.sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation';
+}
+
+function selectionsFromSteps(steps){
+  const selections = {};
+  (steps || []).forEach(step=>{
+    selections[step.id] = (step.options || []).filter(o=>o.selected).map(o=>o.id);
+  });
+  return selections;
+}
+
+function getScenarioById(id){
+  return state.savedScenarios.find(s=>s.id===id);
+}
+
+function getViewerSteps(sc){
+  if(!sc) return null;
+  ensureScenarioSnapshot(sc);
+  if(state.viewerScenarioSnapshotId !== sc.id || !Array.isArray(state.viewerSteps)){
+    state.viewerSteps = cloneDeep(sc.steps);
+    state.viewerScenarioSnapshotId = sc.id;
+  }
+  return state.viewerSteps;
+}
+
+function openScenarioInViewer(id){
+  const sc = getScenarioById(id);
+  if(!sc) return;
+  if(state.currentView==='scenario-viewer' && state.currentViewerScenarioId && state.currentViewerScenarioId!==id && hasUnsavedViewerChanges()){
+    const shouldSave = confirm('Save updates to the current scenario before switching?');
+    if(shouldSave) saveViewerScenario();
+  }
+  ensureScenarioSnapshot(sc);
+  state.currentViewerScenarioId = sc.id;
+  state.viewerSteps = cloneDeep(sc.steps);
+  state.viewerScenarioSnapshotId = sc.id;
+  resetViewerBaseline();
+  renderSavedScenariosNav();
+  view('scenario-viewer');
+}
+
+function clearViewerDraftIfNeeded(){
+  if(!state.currentViewerScenarioId){
+    state.viewerSteps = null;
+    state.viewerScenarioSnapshotId = '';
+  }
+}
+
+function canRunAction(actionKey){
+  const now = Date.now();
+  if(state._lastActionKey === actionKey && now - (state.lastActionAt || 0) < 350) return false;
+  state._lastActionKey = actionKey;
+  state.lastActionAt = now;
+  return true;
+}
+
+function acquireMutationLock(lockKey, ms=700){
+  if(!state._mutationLocks) state._mutationLocks = {};
+  const now = Date.now();
+  const expiresAt = state._mutationLocks[lockKey] || 0;
+  if(expiresAt > now) return false;
+  state._mutationLocks[lockKey] = now + ms;
+  return true;
+}
+
+function releaseMutationLock(lockKey){
+  if(state._mutationLocks) delete state._mutationLocks[lockKey];
+}
+
+function lockButtonOnce(btn, ms=700){
+  if(!btn) return true;
+  const now = Date.now();
+  const expiresAt = Number(btn.dataset.busyUntil || 0);
+  if(expiresAt > now) return false;
+  btn.dataset.busyUntil = String(now + ms);
+  btn.disabled = true;
+  window.setTimeout(()=>{
+    if(btn && btn.isConnected){
+      btn.disabled = false;
+      delete btn.dataset.busyUntil;
+    }
+  }, ms);
+  return true;
+}
+
+function markDirty(context){
+  if(context==='options') state.optionsDirty = true;
+  if(context==='viewer') state.viewerDirty = true;
+}
+
+function computeOptionsHash(){
+  return JSON.stringify(state.steps || []);
+}
+function computeViewerHash(){
+  return JSON.stringify(state.viewerSteps || []);
+}
+function hasUnsavedOptionsChanges(){ return false; }
+function hasUnsavedViewerChanges(){ return false; }
+function resetOptionsBaseline(){
+  state.optionsBaselineHash = computeOptionsHash();
+  state.optionsDirty = false;
+}
+function resetViewerBaseline(){
+  state.viewerBaselineHash = computeViewerHash();
+  state.viewerDirty = false;
+}
+function rememberEventGuard(e, key){
+  if(!e) return false;
+  const stamp = String(Math.round(Number(e.timeStamp || 0)));
+  const guardKey = key + '|' + stamp;
+  if(state._lastDomEventGuard === guardKey) return true;
+  state._lastDomEventGuard = guardKey;
+  return false;
+}
+
+function maybeSaveBeforeLeaving(nextView){ return; }
+
+function view(name){
+  if(state.currentView !== name){
+    maybeSaveBeforeLeaving(name);
+  }
+  state.currentView = name;
+  if(name==='options' && !state.optionsDirty) resetOptionsBaseline();
+  document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));
+  const el = document.getElementById('view-'+name);
+  if(el) el.classList.remove('hidden');
+  document.querySelectorAll('.nav-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.view===name));
+  if(name==='scenario-viewer') renderScenarioViewer();
+  renderSavedScenariosNav();
+  saveState();
+}
+
+function enableInlineEditable(el, onSave){
+  el.addEventListener('dblclick', ()=>{ el.contentEditable='true'; el.focus(); document.execCommand && document.execCommand('selectAll', false, null); });
+  el.addEventListener('blur', ()=>{ el.contentEditable='false'; onSave(el.textContent.trim()); });
+  el.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } });
+}
+
+function renderBrand(){
+  document.getElementById('brand-title').textContent = state.toolName;
+  document.getElementById('brand-sub').textContent = state.toolDesc;
+  document.title = state.toolName;
+}
+function renderQuestions(){
+  const wrap=document.getElementById('question-list'); wrap.innerHTML='';
+  state.questions.forEach((q, idx)=>{
+    const row=document.createElement('div'); row.className='q-item';
+    row.innerHTML=`<div class="q-inner"><div class="q-text" contenteditable="false">${escapeHtml(q)}</div><button class="icon-btn" title="Delete">🗑</button></div>`;
+    const txt=row.querySelector('.q-text');
+    enableInlineEditable(txt, val=>{ state.questions[idx]=val||state.questions[idx]; saveState(); });
+    row.querySelector('button').onclick=()=>{ state.questions.splice(idx,1); renderQuestions(); saveState(); };
+    wrap.appendChild(row);
+  });
+}
+
+function renderSavedScenariosNav(){
+  const wrap=document.getElementById('saved-scenarios-nav'); wrap.innerHTML='';
+  state.savedScenarios.forEach(s=>{
+    const isSelected = String(state.currentViewerScenarioId||'') === String(s.id||'');
+    const div=document.createElement('div');
+    div.className='scenario-mini' + (isSelected ? ' saved-scenario-selected' : '');
+    div.innerHTML=`<div class="scenario-mini-title">${escapeHtml(s.title)}</div><div class="mini-row"><span class="badge ${toneClass(s.tone)}">${escapeHtml(s.tone)}</span></div>`;
+    div.onclick=()=>openScenarioInViewer(s.id);
+    wrap.appendChild(div);
+  });
+}
+function renderSavedScenariosHome(){
+  const wrap=document.getElementById('saved-scenarios-home'); wrap.innerHTML='';
+  state.savedScenarios.forEach((s,idx)=>{
+    const row=document.createElement('div'); row.className='q-item';
+    row.innerHTML=`<div class="q-inner">
+      <div class="q-text" contenteditable="false">${escapeHtml(s.title)}</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="icon-btn" title="Rename">✎</button>
+        <button class="icon-btn" title="Delete">🗑</button>
+      </div>
+    </div>`;
+    const txt=row.querySelector('.q-text');
+    enableInlineEditable(txt, val=>{ s.title = val || s.title; renderSavedScenariosNav(); renderSavedScenariosHome(); renderCompare(); saveState(); });
+    row.querySelectorAll('button')[0].onclick=()=>{ const n=prompt('Rename saved scenario', s.title); if(n&&n.trim()){ s.title=n.trim(); renderSavedScenariosNav(); renderSavedScenariosHome(); renderCompare(); saveState(); } };
+    row.querySelectorAll('button')[1].onclick=()=>{
+      if(confirm(`Delete "${s.title}"?`)){
+        state.savedScenarios.splice(idx,1);
+        if(state.currentViewerScenarioId===s.id){
+          state.currentViewerScenarioId='';
+          clearViewerDraftIfNeeded();
+        }
+        if(state.compareA===s.id) state.compareA = state.savedScenarios[0]?.id || '';
+        if(state.compareB===s.id) state.compareB = state.savedScenarios[1]?.id || state.savedScenarios[0]?.id || '';
+        renderAll();
+      }
+    };
+    wrap.appendChild(row);
+  });
+}
+
+function syncGlobalOptionToScenarioSnapshots(optionId, data){
+  state.savedScenarios.forEach(sc=>{
+    ensureScenarioSnapshot(sc);
+    sc.steps.forEach(step=>{
+      const match = (step.options || []).find(o=>o.id===optionId);
+      if(match) Object.assign(match, data);
+    });
+    sc.selections = selectionsFromSteps(sc.steps);
+  });
+}
+
+function removeOptionFromAllScenarios(optionId){
+  state.savedScenarios.forEach(sc=>{
+    ensureScenarioSnapshot(sc);
+    sc.steps.forEach(step=> step.options = (step.options || []).filter(o=>o.id!==optionId));
+    sc.selections = selectionsFromSteps(sc.steps);
+  });
+}
+
+function removeStepFromAllScenarios(stepId){
+  state.savedScenarios.forEach(sc=>{
+    ensureScenarioSnapshot(sc);
+    sc.steps = (sc.steps || []).filter(s=>s.id!==stepId);
+    if(sc.selections) delete sc.selections[stepId];
+  });
+}
+
+
+function getStepsByContext(context){
+  return context==='viewer' ? (Array.isArray(state.viewerSteps) ? state.viewerSteps : []) : (Array.isArray(state.steps) ? state.steps : []);
+}
+
+function findStepInContext(context, stepId){
+  return getStepsByContext(context).find(s => String(s.id) === String(stepId));
+}
+
+function findOptionInContext(context, stepId, optionId){
+  const step = findStepInContext(context, stepId);
+  if(!step) return {step:null, opt:null};
+  const opt = (step.options || []).find(o => String(o.id) === String(optionId));
+  return {step, opt};
+}
+
+function renderStepColumns(targetEl, stepsData, settings, context){
+  targetEl.innerHTML='';
+  const stepCount = Array.isArray(stepsData) && stepsData.length ? Math.min(stepsData.length, 5) : 1;
+  targetEl.style.setProperty('--step-count', stepCount);
+
+  stepsData.forEach((step, stepIndex)=>{
+    const col=document.createElement('div');
+    col.className='step';
+    col.dataset.stepId = step.id;
+    col.dataset.context = context;
+
+    const palette = getStepPalette(stepIndex);
+    col.style.setProperty('--step-bg', palette.stepBg);
+    col.style.setProperty('--step-border', palette.stepBorder);
+    col.style.setProperty('--step-accent', palette.stepAccent);
+    col.style.setProperty('--step-title-color', palette.stepTitle);
+    col.style.setProperty('--step-desc-color', palette.stepDesc);
+    col.style.setProperty('--card-bg', palette.cardBg);
+    col.style.setProperty('--card-selected-bg', palette.cardSelectedBg);
+    col.style.setProperty('--card-border', 'rgba(255,255,255,.82)');
+    col.style.setProperty('--card-selected-border', 'rgba(255,255,255,.98)');
+    col.style.setProperty('--checkbox-bg', palette.checkboxBg);
+
+    const headerHtml = `<div class="step-head"><div><div class="step-kicker">Step ${stepIndex+1}</div><div class="step-title"><span class="step-title-text" data-step-id="${step.id}" data-context="${context}" contenteditable="false">${escapeHtml(step.name)}</span></div><div class="step-desc">${escapeHtml(step.description||'')}</div></div><button class="icon-btn step-delete-btn" type="button" data-action="remove-step" data-context="${context}" data-step-id="${step.id}" title="Remove step">🗑</button></div>`;
+    col.innerHTML = headerHtml;
+
+    (step.options || []).forEach(opt=>{
+      if(!settings.showDeselected && !opt.selected) return;
+
+      const card=document.createElement('div');
+      card.className='option-card' + (opt.selected ? ' selected' : '');
+      card.dataset.stepId = step.id;
+      card.dataset.optId = opt.id;
+      card.dataset.context = context;
+
+      const chips = [];
+      if(settings.showMeta){
+        if(opt.status) chips.push(`<span class="mini ${toneClass(opt.status)}">${escapeHtml(opt.status)}</span>`);
+        if(opt.impact) chips.push(`<span class="mini ${impactClass(opt.impact)}">Impact: ${escapeHtml(opt.impact)}</span>`);
+        if(opt.effort) chips.push(`<span class="mini ${impactClass(opt.effort)}">Effort: ${escapeHtml(opt.effort)}</span>`);
+        if(opt.complexity) chips.push(`<span class="mini ${impactClass(opt.complexity)}">Complexity: ${escapeHtml(opt.complexity)}</span>`);
+      }
+
+      card.innerHTML=`<div class="option-head">
+          <div>
+            <div class="option-title">${escapeHtml(opt.title)}</div>
+            <div class="option-sub">${escapeHtml(opt.short||'')}</div>
+          </div>
+        </div>
+        ${chips.length ? `<div class="meta">${chips.join('')}</div>`:''}
+        <div class="card-actions">
+          <button class="checkbox-toggle ${opt.selected ? 'checked':''}" type="button" data-action="toggle-option" data-context="${context}" data-step-id="${step.id}" data-opt-id="${opt.id}" title="${opt.selected ? 'Selected' : 'Not selected'}" aria-label="${opt.selected ? 'Selected' : 'Not selected'}"><span class="checkmark">${opt.selected ? '✓' : ''}</span></button>
+        </div>`;
+
+      const toggleBtn = card.querySelector('[data-action="toggle-option"]');
+
+      card.addEventListener('click', ()=>{
+        state.editingOptionId = opt.id || '';
+        state.editingContext = context;
+        openModal();
+      });
+
+      toggleBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        opt.selected = !opt.selected;
+        markDirty(context);
+        rerenderContext(context);
+      });
+
+      col.appendChild(card);
+    });
+
+    const row=document.createElement('div');
+    row.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-top:4px"><button class="btn outline tiny" type="button" data-action="add-card" data-context="${context}" data-step-id="${step.id}">+ Card</button></div>`;
+    const addCardBtn = row.querySelector('[data-action="add-card"]');
+    addCardBtn.addEventListener('click', ()=>{
+      const id = 'c' + Date.now();
+      step.options.push({
+        id,
+        title:'New Option',
+        short:'',
+        impact:'',
+        effort:'',
+        complexity:'',
+        status:'',
+        pros:'',
+        cons:'',
+        notes:'',
+        selected:false
+      });
+      markDirty(context);
+      rerenderContext(context);
+    });
+    col.appendChild(row);
+
+    const removeStepBtn = col.querySelector('[data-action="remove-step"]');
+    removeStepBtn.addEventListener('click', ()=>{
+      const list = getStepsByContext(context);
+      const idx = list.findIndex(s => String(s.id) === String(step.id));
+      if(idx < 0) return;
+      if(!confirm('Remove this step?')) return;
+      list.splice(idx,1);
+      if(context === 'options') removeStepFromAllScenarios(step.id);
+      markDirty(context);
+      rerenderContext(context);
+    });
+
+    targetEl.appendChild(col);
+  });
+
+  targetEl.querySelectorAll('.step-title-text').forEach(el=>{
+    enableInlineEditable(el, (val)=>{
+      const stepId = el.dataset.stepId;
+      const next = (val || '').trim();
+      if(!next){
+        rerenderContext(context);
+        return;
+      }
+      markDirty(context);
+      if(context==='options'){
+        const baseStep = state.steps.find(s=>s.id===stepId);
+        if(baseStep) baseStep.name = next;
+        state.savedScenarios.forEach(sc=>{
+          ensureScenarioSnapshot(sc);
+          const snapStep = sc.steps.find(s=>s.id===stepId);
+          if(snapStep) snapStep.name = next;
+        });
+      } else {
+        const viewerStep = stepsData.find(s=>s.id===stepId);
+        if(viewerStep) viewerStep.name = next;
+      }
+      rerenderContext(context);
+    });
+  });
+}
+
+function renderOptions(){
+  renderStepColumns(
+    document.getElementById('options-grid'),
+    state.steps,
+    {showDeselected: state.showDeselected, showMeta: state.showMeta},
+    'options'
+  );
+}
+function renderScenarioViewer(){
+  const title=document.getElementById('scenario-viewer-title');
+  const sub=document.getElementById('scenario-viewer-sub');
+  const grid=document.getElementById('viewer-grid');
+  const select=document.getElementById('viewer-scenario-select');
+  const sc = getScenarioById(state.currentViewerScenarioId);
+
+  if(select){
+    select.innerHTML='';
+    state.savedScenarios.forEach(s=>{
+      const opt=document.createElement('option');
+      opt.value=s.id;
+      opt.textContent=s.title;
+      if(s.id===state.currentViewerScenarioId) opt.selected=true;
+      select.appendChild(opt);
+    });
+  }
+
+  if(!sc){
+    title.textContent='Scenario Viewer';
+    sub.textContent='Open a saved scenario from the sidebar, then view and update it using the same layout and features as Options.';
+    grid.innerHTML='<div class="step"><div class="step-title">No scenario selected</div><div class="step-desc">Choose a saved scenario from the bottom-left sidebar.</div></div>';
+    return;
+  }
+
+  title.textContent=sc.title;
+  sub.textContent='View and update this saved scenario only. Changes here do not change other saved scenarios until you save this one.';
+  const viewerSteps = getViewerSteps(sc) || [];
+  renderStepColumns(
+    grid,
+    viewerSteps,
+    {showDeselected: state.viewerShowDeselected, showMeta: state.viewerShowMeta},
+    'viewer'
+  );
+}
+function saveViewerScenario(){
+  const sc = getScenarioById(state.currentViewerScenarioId);
+  if(!sc || !Array.isArray(state.viewerSteps)) return;
+  sc.steps = cloneDeep(state.viewerSteps);
+  sc.selections = selectionsFromSteps(sc.steps);
+  resetViewerBaseline();
+  saveState();
+  renderSavedScenariosNav();
+  renderSavedScenariosHome();
+  renderCompare();
+  renderScenarioViewer();
+}
+
+function rerenderContext(context){
+  autosaveContext(context);
+  if(context==='options'){ renderOptions(); }
+  if(context==='viewer'){ renderScenarioViewer(); }
+  renderSavedScenariosNav();
+  renderSavedScenariosHome();
+  renderCompare();
+  renderSettings();
+}
+
+function getEditableOptionByContext(){
+  if(state.editingContext==='viewer' && Array.isArray(state.viewerSteps)){
+    for(const step of state.viewerSteps){ for(const opt of step.options){ if(opt.id===state.editingOptionId) return opt; } }
+  }
+  for(const step of state.steps){ for(const opt of step.options){ if(opt.id===state.editingOptionId) return opt; } }
+  return null;
+}
+function openModal(){
+  const opt=getEditableOptionByContext(); if(!opt) return;
+  document.getElementById('modal-title').textContent = opt.title;
+  document.getElementById('modal-input-title').value = opt.title;
+  document.getElementById('modal-input-short').value = opt.short || '';
+  populateManagedDropdowns({ status: opt.status || '', impact: opt.impact || '', effort: opt.effort || '', complexity: opt.complexity || '' });
+  document.getElementById('modal-input-pros').value = opt.pros || '';
+  document.getElementById('modal-input-cons').value = opt.cons || '';
+  document.getElementById('modal-input-notes').value = opt.notes || '';
+  document.getElementById('option-modal').classList.add('show');
+}
+function closeModal(){ document.getElementById('option-modal').classList.remove('show'); }
+function saveModal(){
+  const opt=getEditableOptionByContext(); if(!opt) return;
+  const data = {
+    title: document.getElementById('modal-input-title').value.trim() || opt.title,
+    short: document.getElementById('modal-input-short').value.trim(),
+    status: document.getElementById('modal-input-status').value,
+    impact: document.getElementById('modal-input-impact').value,
+    effort: document.getElementById('modal-input-effort').value,
+    complexity: document.getElementById('modal-input-complexity').value,
+    pros: document.getElementById('modal-input-pros').value.trim(),
+    cons: document.getElementById('modal-input-cons').value.trim(),
+    notes: document.getElementById('modal-input-notes').value.trim()
+  };
+  Object.assign(opt, data);
+  markDirty(state.editingContext);
+
+  if(state.editingContext==='options'){
+    syncGlobalOptionToScenarioSnapshots(state.editingOptionId, data);
+  }
+
+  rerenderContext(state.editingContext);
+  closeModal();
+}
+function deleteCard(){
+  if(!state.editingOptionId) return;
+  if(state.editingContext==='viewer' && Array.isArray(state.viewerSteps)){
+    markDirty('viewer');
+    state.viewerSteps.forEach(step=> step.options = (step.options || []).filter(o=>o.id!==state.editingOptionId));
+  } else {
+    markDirty('options');
+    state.steps.forEach(step=> step.options = (step.options || []).filter(o=>o.id!==state.editingOptionId));
+    removeOptionFromAllScenarios(state.editingOptionId);
+  }
+  rerenderContext(state.editingContext);
+  closeModal();
+}
+
+function saveScenario(){
+  const title = prompt('Scenario title');
+  if(!title || !title.trim()) return;
+  const stepsSnapshot = cloneDeep(state.steps);
+  const selections = selectionsFromSteps(stepsSnapshot);
+  state.savedScenarios.push({id:'s'+Date.now(), title:title.trim(), tone:'Draft', selections, steps:stepsSnapshot});
+  resetOptionsBaseline();
+  renderSavedScenariosNav(); renderSavedScenariosHome(); renderCompare(); saveState();
+  alert('Scenario saved. You can now compare it in Compare.');
+}
+
+function scenarioSummaryHtml(sc){
+  ensureScenarioSnapshot(sc);
+  const steps = sc.steps || [];
+  return steps.map(step=>{
+    const opts = (step.options || []).filter(o=>o.selected);
+    return `<div class="section-box">
+      <div class="section-k">${escapeHtml(step.name)}</div>
+      <div class="section-v">` + (
+        opts.length ? opts.map(o=>`<div><strong>${escapeHtml(o.title)}</strong><br>${escapeHtml(o.short||'')}${o.pros?`<br><span class="compare-pros-title">Pros:</span> ${escapeHtml(o.pros)}`:''}${o.cons?`<br><span class="compare-cons-title">Cons:</span> ${escapeHtml(o.cons)}`:''}</div>`).join('<div style="height:10px"></div>')
+        : 'No option selected'
+      ) + `</div></div>`;
+  }).join('');
+}
+function renderCompare(){
+  const a=document.getElementById('compare-a'), b=document.getElementById('compare-b');
+  a.innerHTML=''; b.innerHTML='';
+  state.savedScenarios.forEach(sc=>{
+    const oa=document.createElement('option'); oa.value=sc.id; oa.textContent=sc.title; if(sc.id===state.compareA) oa.selected=true; a.appendChild(oa);
+    const ob=document.createElement('option'); ob.value=sc.id; ob.textContent=sc.title; if(sc.id===state.compareB) ob.selected=true; b.appendChild(ob);
+  });
+  if(!state.savedScenarios.some(x=>x.id===state.compareA)) state.compareA = state.savedScenarios[0]?.id || '';
+  if(!state.savedScenarios.some(x=>x.id===state.compareB)) state.compareB = state.savedScenarios[1]?.id || state.savedScenarios[0]?.id || '';
+  if(a.value !== state.compareA) a.value = state.compareA;
+  if(b.value !== state.compareB) b.value = state.compareB;
+
+  const wrap=document.getElementById('compare-grid'); wrap.innerHTML='';
+  if(!state.savedScenarios.length){
+    wrap.innerHTML='<div class="card"><div class="pad"><div class="card-title">No saved scenarios</div><div class="card-sub">Save a scenario from Options first.</div></div></div>';
+    return;
+  }
+  const sa=state.savedScenarios.find(x=>x.id===state.compareA);
+  const sb=state.savedScenarios.find(x=>x.id===state.compareB) || sa;
+  [sa,sb].forEach((sc,idx)=>{
+    const col=document.createElement('div'); col.className='card';
+    if(!sc){ col.innerHTML='<div class="pad"><div class="card-title">No scenario selected</div></div>'; wrap.appendChild(col); return; }
+    col.innerHTML=`<div class="pad">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:start">
+        <div><div class="card-title" style="font-size:22px">${escapeHtml(sc.title)}</div><div class="card-sub">${idx===0?'Scenario A':'Scenario B'}</div></div>
+        <span class="badge ${toneClass(sc.tone)}">${escapeHtml(sc.tone)}</span>
+      </div>
+      ${scenarioSummaryHtml(sc)}
+    </div>`;
+    wrap.appendChild(col);
+  });
+}
+
+function exportState(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'scenario-planner-data.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),500);
+}
+function importStateObject(obj){
+  if(!obj || typeof obj !== 'object') return false;
+  const fresh = defaultState();
+  Object.keys(fresh).forEach(k=>{ if(obj[k]!==undefined) state[k]=obj[k]; });
+  normalizeState();
+  renderAll();
+  saveState();
+  return true;
+}
+
+function renderSettings(){
+  const wrap = document.getElementById('settings-grid');
+  if(!wrap) return;
+  const defs = [
+    {key:'status', label:'Recommendation', hint:'Values shown in the Recommendation dropdown.'},
+    {key:'impact', label:'Impact', hint:'Values shown in the Impact dropdown.'},
+    {key:'effort', label:'Effort', hint:'Values shown in the Effort dropdown.'},
+    {key:'complexity', label:'Complexity', hint:'Values shown in the Complexity dropdown.'}
+  ];
+  wrap.innerHTML = '';
+  defs.forEach(def=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    const list = Array.isArray(state.dropdownOptions[def.key]) ? state.dropdownOptions[def.key] : [];
+    card.innerHTML = `<div class="pad">
+      <div class="card-title">${escapeHtml(def.label)}</div>
+      <div class="card-sub">${escapeHtml(def.hint)}</div>
+      <div class="settings-list" id="settings-list-${def.key}"></div>
+      <div class="actions" style="margin-top:14px"><button class="btn outline tiny" type="button" data-settings-add="${def.key}">+ Add value</button></div>
+    </div>`;
+    wrap.appendChild(card);
+    const listEl = card.querySelector(`#settings-list-${def.key}`);
+    if(!list.length){
+      listEl.innerHTML = '<div class="settings-empty">No values added yet.</div>';
+    } else {
+      list.forEach((value, idx)=>{
+        const row = document.createElement('div');
+        row.className = 'settings-row';
+        row.innerHTML = `<div class="settings-row-text">${escapeHtml(value)}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="icon-btn" type="button" title="Edit value" data-settings-edit="${def.key}" data-settings-index="${idx}">✎</button>
+            <button class="icon-btn" type="button" title="Delete value" data-settings-delete="${def.key}" data-settings-index="${idx}">🗑</button>
+          </div>`;
+        listEl.appendChild(row);
+      });
+    }
+  });
+
+  wrap.querySelectorAll('[data-settings-add]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.settingsAdd;
+      const val = prompt('Add a new dropdown value');
+      const next = String(val || '').trim();
+      if(!next) return;
+      if(!state.dropdownOptions[key].includes(next)) state.dropdownOptions[key].push(next);
+      saveState();
+      renderSettings();
+      if(document.getElementById('option-modal').classList.contains('show')){
+        const opt = getEditableOptionByContext();
+        populateManagedDropdowns(opt || {});
+      }
+      rerenderContext(state.currentView==='scenario-viewer' ? 'viewer' : 'options');
+    };
+  });
+
+  wrap.querySelectorAll('[data-settings-edit]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.settingsEdit;
+      const idx = Number(btn.dataset.settingsIndex);
+      const current = state.dropdownOptions[key]?.[idx] || '';
+      const val = prompt('Edit dropdown value', current);
+      const next = String(val || '').trim();
+      if(!next) return;
+      state.dropdownOptions[key][idx] = next;
+      state.dropdownOptions[key] = Array.from(new Set(state.dropdownOptions[key].map(v=>String(v || '').trim()).filter(Boolean)));
+      saveState();
+      renderSettings();
+      if(document.getElementById('option-modal').classList.contains('show')){
+        const opt = getEditableOptionByContext();
+        populateManagedDropdowns(opt || {});
+      }
+      renderOptions();
+      renderScenarioViewer();
+    };
+  });
+
+  wrap.querySelectorAll('[data-settings-delete]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.settingsDelete;
+      const idx = Number(btn.dataset.settingsIndex);
+      const current = state.dropdownOptions[key]?.[idx] || '';
+      if(!current) return;
+      if(!confirm(`Remove "${current}" from this dropdown list?`)) return;
+      state.dropdownOptions[key].splice(idx, 1);
+      if(!state.dropdownOptions[key].length){
+        state.dropdownOptions[key] = cloneDeep(defaultState().dropdownOptions[key]);
+      }
+      saveState();
+      renderSettings();
+      if(document.getElementById('option-modal').classList.contains('show')){
+        const opt = getEditableOptionByContext();
+        populateManagedDropdowns(opt || {});
+      }
+      renderOptions();
+      renderScenarioViewer();
+    };
+  });
+}
+
+function renderAll(){
+  applySidebarCollapsed();
+  renderBrand();
+  renderQuestions();
+  renderSavedScenariosNav();
+  renderSavedScenariosHome();
+  renderOptions();
+  renderScenarioViewer();
+  renderCompare();
+  renderSettings();
+  view(state.currentView || 'home');
+}
+
+document.getElementById('home-open-options').onclick=()=>view('options');
+document.querySelectorAll('.nav-btn').forEach(btn=> btn.onclick=()=>view(btn.dataset.view));
+document.getElementById('sidebar-collapse-btn').onclick=()=>{ state.sidebarCollapsed = !state.sidebarCollapsed; applySidebarCollapsed(); saveState(); };
+document.getElementById('add-question-btn').onclick=()=>{ state.questions.push('New question'); renderQuestions(); saveState(); };
+document.getElementById('toggle-show-deselected').onchange=e=>{ state.showDeselected=e.target.checked; renderOptions(); saveState(); };
+document.getElementById('toggle-show-meta').onchange=e=>{ state.showMeta=e.target.checked; renderOptions(); saveState(); };
+document.getElementById('viewer-toggle-show-deselected').onchange=e=>{ state.viewerShowDeselected=e.target.checked; renderScenarioViewer(); saveState(); };
+document.getElementById('viewer-toggle-show-meta').onchange=e=>{ state.viewerShowMeta=e.target.checked; renderScenarioViewer(); saveState(); };
+document.getElementById('viewer-scenario-select').onchange=e=>{ openScenarioInViewer(e.target.value); };
+document.getElementById('save-scenario-btn').onclick=saveScenario;
+document.getElementById('viewer-save-scenario-btn').onclick=()=>{}; document.getElementById('viewer-save-scenario-btn').disabled=true;
+document.getElementById('add-step-btn').onclick=()=>{ const n = prompt('Step name'); if(n && n.trim()){ state.steps.push({id:'step'+Date.now(), name:n.trim(), description:'', options:[]}); markDirty('options'); rerenderContext('options'); } };
+document.getElementById('viewer-add-step-btn').onclick=()=>{ if(!Array.isArray(state.viewerSteps)) return; const n = prompt('Step name'); if(n && n.trim()){ state.viewerSteps.push({id:'step'+Date.now(), name:n.trim(), description:'', options:[]}); markDirty('viewer'); rerenderContext('viewer'); } };
+
+function installUnifiedActionHandlers(){}
+
+document.getElementById('compare-a').onchange=e=>{ state.compareA=e.target.value; renderCompare(); saveState(); };
+document.getElementById('compare-b').onchange=e=>{ state.compareB=e.target.value; renderCompare(); saveState(); };
+document.getElementById('export-json-btn').onclick=exportState;
+document.getElementById('viewer-export-json-btn').onclick=exportState;
+document.getElementById('import-json-btn').onclick=()=>document.getElementById('import-json-file').click();
+document.getElementById('viewer-import-json-btn').onclick=()=>document.getElementById('viewer-import-json-file').click();
+document.getElementById('import-json-file').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const obj=JSON.parse(await f.text()); if(importStateObject(obj)) alert('Import complete.'); else alert('Import failed.'); }catch(err){ alert('Import failed.'); } e.target.value=''; };
+document.getElementById('viewer-import-json-file').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; try{ const obj=JSON.parse(await f.text()); if(importStateObject(obj)) alert('Import complete.'); else alert('Import failed.'); }catch(err){ alert('Import failed.'); } e.target.value=''; };
+document.getElementById('close-modal').onclick=closeModal;
+document.getElementById('close-modal-2').onclick=closeModal;
+document.getElementById('save-modal').onclick=saveModal;
+document.getElementById('delete-card-btn').onclick=deleteCard;
+document.getElementById('option-modal').onclick=e=>{ if(e.target.id==='option-modal') closeModal(); };
+
+enableInlineEditable(document.getElementById('brand-title'), val=>{ state.toolName=val||'Scenario Planner'; renderBrand(); saveState(); });
+enableInlineEditable(document.getElementById('brand-sub'), val=>{ state.toolDesc=val||'Local option planning prototype'; renderBrand(); saveState(); });
+
+window.addEventListener('beforeunload', ()=>{});
+
+renderAll();
+if(!state.optionsBaselineHash) resetOptionsBaseline();
+if(!state.viewerBaselineHash) resetViewerBaseline();
+</script>
+</body>
+</html>
